@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JSON Validator</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsonlint@1.6.0/web/jsonlint.js"></script>
   </head>
+
   <body class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-xl bg-gray-800 rounded-2xl p-6 shadow-lg">
       <h1 class="text-2xl font-bold text-purple-400 mb-6 text-center">JSON File Validator</h1>
@@ -19,48 +21,59 @@
                file:bg-purple-600 file:text-white hover:file:bg-purple-700 mb-4"
       />
 
+      <pre id="preview" class="hidden bg-gray-900 text-green-300 p-4 rounded-lg text-xs overflow-auto max-h-64 mb-4"></pre>
+
       <div id="output" class="mt-4 text-sm p-4 rounded-lg"></div>
     </div>
 
     <script>
       const input = document.getElementById("jsonInput");
       const output = document.getElementById("output");
+      const preview = document.getElementById("preview");
 
       input.addEventListener("change", () => {
         const file = input.files[0];
 
         if (!file || !file.name.endsWith(".json")) {
-          output.className = "mt-4 text-sm p-4 rounded-lg bg-red-600 text-white";
-          output.textContent = "Please upload a valid .json file.";
+          showMessage("Please upload a valid .json file.", "red");
           return;
         }
 
         const reader = new FileReader();
         reader.onload = function (e) {
+          const content = e.target.result;
+
           try {
-            const content = e.target.result;
-            JSON.parse(content);
-            output.className = "mt-4 text-sm p-4 rounded-lg bg-green-600 text-white";
-            output.textContent = "✅ JSON is valid!";
+            // Validate using jsonlint
+            jsonlint.parse(content);
+            showMessage("✅ JSON is valid!", "green");
+
+            // Show JSON preview
+            preview.classList.remove("hidden");
+            preview.textContent = formatJson(content);
           } catch (err) {
-            const line = findErrorLine(e.target.result, err.message);
-            output.className = "mt-4 text-sm p-4 rounded-lg bg-red-600 text-white";
-            output.innerHTML = `<strong>❌ Invalid JSON:</strong><br>${err.message}${line ? `<br><strong>Likely near line:</strong> ${line}` : ""}`;
+            showMessage(`❌ <strong>Invalid JSON:</strong><br>${err.message}`, "red");
+
+            // Optional: highlight raw preview even if invalid
+            preview.classList.remove("hidden");
+            preview.textContent = content;
           }
         };
+
         reader.readAsText(file);
       });
 
-      function findErrorLine(jsonText, errorMsg) {
-        const lines = jsonText.split("\n");
-        for (let i = 0; i < lines.length; i++) {
-          try {
-            JSON.parse(lines.slice(0, i + 1).join("\n"));
-          } catch {
-            return i + 1;
-          }
+      function showMessage(message, color) {
+        output.className = `mt-4 text-sm p-4 rounded-lg bg-${color}-600 text-white`;
+        output.innerHTML = message;
+      }
+
+      function formatJson(raw) {
+        try {
+          return JSON.stringify(JSON.parse(raw), null, 2);
+        } catch {
+          return raw;
         }
-        return null;
       }
     </script>
   </body>
